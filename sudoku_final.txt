@@ -1,0 +1,406 @@
+#include <bits/stdc++.h>
+using namespace std;
+#define IOS ios_base::sync_with_stdio(false);cin.tie(0);cout.tie(0);
+#define ll long long
+#define vll vector<ll>
+#define vi vector<int>
+#define pb push_back
+#define fi first
+#define se second
+#define pii pair<int,int>
+#define pll pair<ll,ll>
+#define mii map<int,int>
+#define mll map<ll,ll>
+#define all(x) (x).begin(),(x).end()
+#define S(x) (int)(x).size()
+#define L(x) (int)(x).length()
+#define debug(x) cerr << #x << " " << x << endl;
+#define debug_p(x) cerr << #x << " [" << x.fi << " " << x.se << "]"<<endl;
+#define debug_v(x) {cerr << #x << " "; for (auto ioi : x) cerr << ioi << " "; cerr << endl;}
+#define debug_vp(x) {cerr << #x << " "; for (auto ioi : x) cerr << '[' << ioi.fi << " " << ioi.se << ']'; cerr << endl;}
+#define debug_v_v(x) {cerr << #x << "/*\n"; for (auto ioi : x) { for (auto ioi2 : ioi) cerr << ioi2 << " "; cerr << '\n';} cerr << "*/" << #x << endl;}
+#define gen_clock(x) ll x = clock(); cerr << "Clock " << #x << " created" << endl;
+#define check_clock(x) cerr << "Time spent in " << #x << ": " << (double)(clock() - x)/CLOCKS_PER_SEC << endl; x = clock();
+#define reset_clock(x) x = clock()
+ 
+const int mod = 1e9+7;
+const ll infl = 0x3f3f3f3f3f3f3f3fLL;
+const int infi = 0x3f3f3f3f;
+
+class sudoku
+{
+	public:
+	int N;
+	//type of sudoku
+	int K;
+	//digits removed based on difficulty
+	int M;
+	//sqrt(N)-size of box & max number that can be entered
+	vector<vector<int> >X,Y;
+	vector<int>Z;
+	//store 1 to M for random shuffling
+	// 2D array to store values
+	//A
+	sudoku(int n,int k)
+	{
+		N=n;
+		K=k;
+		M=sqrt(n);
+		X.resize(N);
+		Y.resize(N);
+		for(int i=0;i<N;i++)
+		{
+			X[i].resize(N);
+			Y[i].resize(N);
+			for(int j=0;j<N;j++)
+			{
+				X[i][j]=0;
+				Y[i][j]=0;
+			}
+			
+		}
+		for(int i=1;i<=N;i++)
+		Z.pb(i);
+		fill_values();
+		print_sudoku();
+		remove_digits();
+		print_sudokuY();
+		
+	}
+	// parametrised constructor
+	// constructor overloading with different signature
+	//B
+	sudoku(int n,vector<vector<int> >P)
+	{
+		N=n;
+		M=sqrt(n);
+		X.resize(N);
+		for(int i=0;i<N;i++)
+		{
+			X[i].resize(N);
+			for(int j=0;j<N;j++)
+			{
+				X[i][j]=P[i][j];
+				
+			}
+			
+		}
+		//checking if the user entered matrix is correct
+		if(is_valid())
+		{
+			fill_remaining_values(0,0);
+			//filling values in empty places
+			print_sudoku();
+			//print final answer
+		}
+		else
+		cout<<"Invalid Matrix, hence unsolvable"<<endl;
+		
+	}
+	
+	
+	//to check if user defined array is legal
+	//B
+	bool is_valid() 
+	{ 
+	    //map for row column and boxes 
+	    unordered_map<int,int>rowct[N],columnct[N],boxct[M][M]; 
+	    for (int i=0;i<N;i++) 
+	    { 
+	        for (int j=0;j<N;j++) 
+	        { 
+	            // mark the element in row column and box 
+	            rowct[i][X[i][j]]+=1; 
+	            columnct[j][X[i][j]]+=1; 
+	            boxct[i/M][j/M][X[i][j]] += 1; 
+				 // if an element is already present in the map 
+				if(X[i][j]!=0)
+	            if((boxct[i/M][j/M][X[i][j]]>1)||(columnct[j][X[i][j]]>1)||(rowct[i][X[i][j]]>1)) 
+	                return false; 
+	        } 
+	    } 
+	    return true; 
+	} 
+	
+	//filling empty values
+	//B
+	bool fill_remaining_values(int i,int j)
+	{
+		//reaching here implies all empty values filled legally
+		if((j>=N)&&(i>=N-1))
+		{
+			return true;
+			
+		}
+		//boundary condition
+		if((j>=N)&&(i<N-1))
+		{
+			i=i+1;
+			j=0;
+		}
+		//already filled position
+		if(X[i][j]!=0)
+		{
+			return(fill_remaining_values(i,j+1));
+			//false implies starting again
+			
+		}
+		else
+		{
+			for(int num=N;num>=0;num--)
+			{
+				//check if number fits the position
+				//comparing elements from that row,column and box
+				if(is_pos_ok(i,j,num))
+				{
+					X[i][j]=num;
+					if (fill_remaining_values( i, j + 1)) 
+            			return true; 
+            			//if any value is true then it a valid
+            			//else in invalid
+					
+				}
+				X[i][j]=0;
+			}
+		}
+		return false;
+		//if control reaches this point it means that this current path is invalid
+		
+	}
+	//now filling values
+	//A
+	void fill_values()
+	{
+		fill_diagonal_boxes();
+		//the diagonal boxes will never hsve contradictary values;
+		//hence can be filled in any randomised fashion without any checking 
+		std::random_shuffle ( Z.begin(), Z.end() );
+		//inbuild function to shuffle the order
+		fill_other_boxes(0,M);
+		//first index to that is unfilled
+		
+		
+	}
+	//A
+	//free to fill in any way
+	void fill_diagonal_boxes()
+	{
+		for(ll i=0;i<N;i+=M)
+		{
+			fill_box(i,i);
+		}
+		//filling N diagonal boxes using its starting index of row and column
+	}
+	
+	//A
+	//used for diagonal filling only
+	void fill_box(int row,int col)
+	{ 
+        int num=0;
+        std::random_shuffle ( Z.begin(), Z.end() );
+        //to shuffle the order for every box
+        for (int i=0; i<M; i++) 
+        { 
+            for (int j=0; j<M; j++) 
+    		{
+                
+               // num = 0; 
+                // generating random number in the range 1 to N
+                
+                //Z covers all values so the box will always have every number from 1 to N
+				X[row+i][col+j] = Z[num];
+				num++;
+				//num goes from 0 to N-1
+            } 
+        } 
+    }
+    
+    //A
+    //check if the number has not already been used in the M*M box 
+    bool not_used_in_box(int row, int col, int num) 
+    { 
+        for (int i = 0; i<M; i++) 
+            for (int j = 0; j<M; j++) 
+                if (X[row+i][col+j]==num) 
+                    return false; 
+                //row and column values here are the starting indexes of each box    
+  
+        return true; 
+    }
+    //A & B
+    //check if an element can occupy a given postion
+    bool is_pos_ok(int i,int j,int num)
+    {
+    	return((not_used_in_box(i-i%M,j-j%M,num))&&(not_used_in_row(i,num))&&(not_used_in_col(j,num)));
+    	//returns true or false
+    	//if element not used in that row, column or box that i,j belongs to then it is a valid move
+    }
+    //A
+    //check if the number has not already been used in the ith row
+    bool not_used_in_row(int i,int num)
+    {
+    	for (int j=0;j<N;j++) 
+           if (X[i][j] == num) 
+                return false; 
+        return true;
+    }
+    //A
+    //check if the number has not already been used in the ith column
+    bool not_used_in_col(int j,int num)
+    {
+    	for (int i=0;i<N;i++) 
+           if (X[i][j] == num) 
+                return false; 
+        return true;
+    }
+    //A
+    //to fill other non diagonal boxes recursively
+    bool fill_other_boxes(int i,int j)
+    { 
+        //std::random_shuffle ( Z.begin(), Z.end() );
+        //no random shuffling done because the order will change during the recurion then
+        //and some numbers may not be checked
+        if(j>=N&&i<N-1) 
+        { 
+            i=i+1; 
+            j=0; 
+        } 
+        //boundary condition
+        if(i>=N&&j>=N) 
+        return true; 
+		//if control reaches this point,implies the answer is valid
+        if(i<M) 
+        { 
+            if(j<M) 
+            j=M; 
+        } 
+        else if(i<N-M) 
+        { 
+            if(j==(int)(i/M)*M) 
+            j=j+M; 
+        } 
+        else
+        { 
+            if(j==N-M) 
+            { 
+                i=i+1; 
+                j=0; 
+                if (i>=N) 
+                    return true; 
+            } 
+        } 
+        //3 condition to skip the diagonal boxes
+        //first for first, last for last and middle for the rest
+        
+  
+        for (int num=0;num<N;num++) 
+        { 
+            //check is valid combination
+            if (is_pos_ok(i,j,Z[num])) 
+            { 
+                X[i][j]=Z[num]; 
+                //assuming this position to be filled with this num
+                //seeing if other position can be filled in a valid fashion
+                if (fill_other_boxes(i, j+1)) 
+                    return true; 
+  
+                X[i][j] = 0; 
+                //if control reaches here means that this num in this pos does not lead to a valid output
+            } 
+        } 
+        return false; 
+        //if control reaches here,it means the combination is in valid 
+    } 
+    //A
+    //for removing K digits from generated matrix randomly
+    void remove_digits()
+    {
+    	for(int i=0;i<N;i++)
+    		for(int j=0;j<N;j++)
+    			Y[i][j]=X[i][j];
+    	//copying matrix to a new matrix that can be altered
+    	int count=K;
+    	while(count>0)
+    	{
+    		int i=rand()%N;
+    		int j=rand()%N;
+    		// choosing random i,j within range
+    		if(Y[i][j]!=0)
+    		{
+    			//if the pos is non empty then it is made empty
+    			Y[i][j]=0;
+    			count--;
+    			//exit only after k non empty spaces are made empty
+    		}
+    	}
+    	
+    }
+    //A & B
+    //to print the final full matrix
+    void print_sudoku()
+    {
+    	cout<<"Complete Sudoku Solution for "<<N<<" * "<<N<<" matrix"<<endl; 
+    	for(int i=0;i<N;i++)
+    	{	for(int j=0;j<N;j++)
+    			cout<<X[i][j]<<" ";
+    		cout<<endl;	
+    	}
+    	cout<<endl;
+    }
+    //A
+    //to print the matrix with K empty positions
+    void print_sudokuY()
+    {
+    	cout<<"Sudoku for "<<N<<" * "<<N<<" matrix with "<<K<<" elements removed "<<endl; 
+    	for(int i=0;i<N;i++)
+    	{	for(int j=0;j<N;j++)
+    			cout<<Y[i][j]<<" ";
+    		cout<<endl;	
+    	}
+    	cout<<endl;
+    }
+    
+    
+};
+//end of class
+//no objects declared here
+
+
+
+int main() {
+	srand (time(NULL));
+	//for random_shuffle and rand()
+	ll x;
+	//1 for matrix generation
+	//2 for matrix completion
+	cin>>x;
+	if(x==1)
+	{
+		ll n,k;
+		cin>>n>>k;
+		//choose 4*4, 9*9, 16*16 matrix
+		//choose no of elements to remove
+		sudoku A(n,k);
+		//constructor 1 is used due to signature being int,int
+		
+	}
+	else if(x==2)
+	{
+		vector<vector<int> >P;
+		int n;
+		cin>>n;
+		//choose 4*4, 9*9, 16*16 matrix
+		P.resize(n);
+		for(int i=0;i<n;i++)
+		{
+			P[i].resize(n);
+			for(int j=0;j<n;j++)
+			cin>>P[i][j];
+			//user entered incomplete matrix
+		}
+		sudoku B(n,P);
+		//constructor 1 is used due to signature being int,int
+	}
+	
+	return 0;
+}
